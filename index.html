@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0A0A0B">
+<title>ZT3 Cockpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-column cockpit, sticky status bar on top, tab bar fixed at bottom (like a native app). */
+:root{
+  --bg:#0A0A0B; --card:#1C1C1E; --elev:#2C2C2E; --line:rgba(255,255,255,.08);
+  --fg:#F2F2F7; --muted:#9A9AA2; --accent:#00C8D7; --accent-ink:#00262A;
+  --ok:#30D158; --warn:#FF9F0A; --sos:#FF3B30;
+  --display:"Space Grotesk",ui-rounded,system-ui,sans-serif;
+  --body:"Inter",system-ui,-apple-system,sans-serif;
+  --r:22px; color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root{
+  --bg:#F2F2F7; --card:#FFFFFF; --elev:#E5E5EA; --line:rgba(0,0,0,.07);
+  --fg:#111114; --muted:#6B6B73; --accent:#0097A3; --accent-ink:#FFFFFF; color-scheme:light;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;-webkit-tap-highlight-color:transparent}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+main{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 24px;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:2rem;letter-spacing:-.02em}
+h2{font-size:1.05rem;color:var(--muted);font-weight:500}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+.row{display:flex;align-items:center;gap:12px}
+.between{justify-content:space-between}
+.muted{color:var(--muted)}
+.small{font-size:.82rem}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums}
+.big{font-size:3.4rem;font-weight:700;line-height:1}
+.mid{font-size:1.7rem;font-weight:700}
+.unit{color:var(--muted);font-size:.9rem;margin-left:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:.78rem;font-weight:600;background:var(--elev);color:var(--muted)}
+.pill.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.btn{min-height:48px;border-radius:14px;padding:0 18px;font-weight:600;background:var(--elev);display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.danger{background:var(--sos);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.tab:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input,textarea,select{font:inherit;color:var(--fg);background:var(--elev);border:1px solid var(--line);border-radius:12px;padding:12px;width:100%}
+label{display:flex;flex-direction:column;gap:6px;font-size:.88rem;color:var(--muted)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--elev);border-radius:12px;padding:3px}
+.seg button{min-height:40px;border-radius:10px;background:transparent;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--fg)}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));z-index:5}
+.tab{background:none;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px;font-size:.7rem;color:var(--muted)}
+.tab svg{width:24px;height:24px}
+.tab[aria-selected="true"]{color:var(--accent)}
+.tab.sos{color:var(--sos)}
+.view{display:flex;flex-direction:column;gap:14px}
+[hidden]{display:none!important}
+.scooter{width:100%;max-width:100%;height:auto}
+.ring{position:relative;width:104px;height:104px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:3px;height:20px}
+.bars i{width:5px;border-radius:2px;background:var(--elev)}
+.bars i.on{background:var(--ok)}
+.log{font-family:ui-monospace,Menlo,monospace;font-size:.72rem;white-space:pre-wrap;word-break:break-all;background:var(--elev);border-radius:12px;padding:12px;max-height:280px;overflow:auto;margin:0}
+.list{display:flex;flex-direction:column}
+.list .item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);gap:12px}
+.list .item:last-child{border-bottom:0}
+.chart{width:100%;height:auto;display:block}
+.sosbtn{position:relative;width:240px;height:240px;margin:8px auto;border-radius:50%;background:none;touch-action:none;user-select:none;-webkit-user-select:none}
+.sosbtn svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.sosbtn .core{position:absolute;inset:22px;border-radius:50%;background:var(--sos);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--display);box-shadow:0 0 40px color-mix(in srgb,var(--sos) 55%,transparent);transition:transform .15s}
+.sosbtn.holding .core{transform:scale(.95)}
+.notice{border-radius:14px;padding:12px 14px;font-size:.88rem;background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--fg)}
+.notice.ok{background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;z-index:9;max-width:90vw}
+.confirm{display:flex;flex-direction:column;gap:10px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.moving .wheel{animation:spin .6s linear infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{0%{opacity:.8;r:20}100%{opacity:0;r:46}}
+.scan circle.p{animation:pulse 1.4s ease-out infinite}
+</style>
+</head>
+<body>
+<main>
+
+<!-- HOME -->
+<section class="view" id="v-home">
+  <div class="row between">
+    <div>
+      <h1 id="h-name">ZT3</h1>
+      <div class="row small muted" style="gap:6px"><span id="h-statusdot" class="dot" style="color:var(--muted)"></span><span id="h-status">Nicht verbunden</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+      <span class="pill warn" id="h-demo">Demo-Modus</span>
+      <div class="bars" id="h-bars" aria-label="Signal"><i style="height:6px"></i><i style="height:10px"></i><i style="height:14px"></i><i style="height:18px"></i></div>
+    </div>
+  </div>
+
+  <svg class="scooter" id="scooter" viewBox="0 0 320 200" role="img" aria-label="Roller-Illustration">
+    <ellipse cx="160" cy="188" rx="140" ry="6" fill="currentColor" opacity=".12"/>
+    <polygon id="beam" points="236,46 320,14 320,110" fill="#FFD60A" opacity="0" />
+    <g fill="none" stroke="var(--fg)" stroke-linecap="round" opacity=".9">
+      <line x1="248" y1="150" x2="226" y2="26" stroke-width="11"/>
+      <line x1="200" y1="22" x2="258" y2="30" stroke-width="8"/>
+      <line x1="76" y1="134" x2="64" y2="150" stroke-width="9"/>
+    </g>
+    <rect x="70" y="124" width="160" height="16" rx="8" fill="var(--fg)" opacity=".9"/>
+    <rect x="86" y="121" width="128" height="5" rx="2.5" fill="var(--accent)"/>
+    <rect id="lamp" x="226" y="40" width="18" height="11" rx="4" fill="var(--elev)"/>
+    <g class="wheel"><circle cx="64" cy="152" r="34" fill="var(--elev)" stroke="var(--fg)" stroke-opacity=".25" stroke-width="2"/><circle cx="64" cy="152" r="18" fill="var(--card)"/><line x1="64" y1="122" x2="64" y2="130" stroke="var(--muted)" stroke-width="3"/><circle cx="64" cy="152" r="4" fill="var(--accent)"/></g>
+    <g class="wheel"><circle cx="252" cy="152" r="34" fill="var(--elev)" stroke="var(--fg)" stroke-opacity=".25" stroke-width="2"/><circle cx="252" cy="152" r="18" fill="var(--card)"/><line x1="252" y1="122" x2="252" y2="130" stroke="var(--muted)" stroke-width="3"/><circle cx="252" cy="152" r="4" fill="var(--accent)"/></g>
+  </svg>
+
+  <div class="card">
+    <div class="row" style="gap:16px">
+      <div class="ring">
+        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="43" fill="none" stroke="var(--elev)" stroke-width="10"/><circle id="ring-fg" cx="50" cy="50" r="43" fill="none" stroke="var(--ok)" stroke-width="10" stroke-linecap="round" stroke-dasharray="270.2" stroke-dashoffset="270.2"/></svg>
+        <div class="label"><span class="num mid" id="h-batt">–</span><span class="small muted">% Akku</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;flex:1;min-width:0">
+        <div><div class="small muted">GPS-Tempo</div><span class="num mid" id="h-speed">0</span><span class="unit u-speed">km/h</span></div>
+        <div><div class="small muted">Gesamt gefahren (App)</div><span class="num mid" id="h-total">0</span><span class="unit u-dist">km</span></div>
+      </div>
+    </div>
+    <div class="small muted" id="h-battnote">Demo-Wert. Verbinde den Roller für den echten Akkustand (falls lesbar).</div>
+  </div>
+
+  <div class="card">
+    <div class="row between"><h2>Roller</h2><span class="pill" id="h-bt-pill">Bluetooth</span></div>
+    <div id="h-btnote" class="notice" hidden></div>
+    <button class="btn primary" id="btn-connect">Roller suchen &amp; verbinden</button>
+    <button class="btn" id="btn-disconnect" hidden>Trennen</button>
+    <div class="list" id="h-info"></div>
+  </div>
+
+  <div class="card">
+    <h2>Steuerung</h2>
+    <div class="grid2">
+      <button class="btn" data-locked="Licht">💡 Licht</button>
+      <button class="btn" data-locked="Sperre">🔒 Sperre</button>
+      <button class="btn" data-locked="Tempomat">⏱ Tempomat</button>
+      <button class="btn" data-locked="Tempolimit">🐢 Tempolimit</button>
+    </div>
+    <div class="small muted">Gesperrt: Segway steuert diese Funktionen über ein verschlüsseltes Protokoll. Die Seite schickt deshalb nie Befehle an den Roller.</div>
+  </div>
+</section>
+
+<!-- RIDE -->
+<section class="view" id="v-ride" hidden>
+  <h1>Fahrt</h1>
+  <div class="card" style="align-items:center;text-align:center">
+    <div class="small muted">GPS-Tempo</div>
+    <div><span class="num big" id="r-speed">0</span><span class="unit u-speed">km/h</span></div>
+    <div class="grid2" style="width:100%">
+      <div><div class="small muted">Zeit</div><div class="num mid" id="r-time">0:00</div></div>
+      <div><div class="small muted">Strecke</div><div><span class="num mid" id="r-dist">0.00</span><span class="unit u-dist">km</span></div></div>
+      <div><div class="small muted">Ø Tempo</div><div><span class="num mid" id="r-avg">0</span><span class="unit u-speed">km/h</span></div></div>
+      <div><div class="small muted">Höchstes</div><div><span class="num mid" id="r-max">0</span><span class="unit u-speed">km/h</span></div></div>
+    </div>
+    <button class="btn primary" id="btn-ride">▶︎ Fahrt starten</button>
+    <div class="small muted" id="r-note">Funktioniert ohne Roller. Erlaube den Standortzugriff, wenn gefragt. Das GPS-Tempo ist ein Schätzwert.</div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="view" id="v-stats" hidden>
+  <h1>Statistik</h1>
+  <div class="seg" role="group" aria-label="Zeitraum"><button id="p-week" aria-pressed="true">Woche</button><button id="p-month" aria-pressed="false">Monat</button></div>
+  <div class="card">
+    <div class="grid2">
+      <div><div class="small muted">Strecke</div><span class="num mid" id="s-dist">0</span><span class="unit u-dist">km</span></div>
+      <div><div class="small muted">Fahrzeit</div><span class="num mid" id="s-time">0 min</span></div>
+      <div><div class="small muted">Ø Tempo</div><span class="num mid" id="s-avg">0</span><span class="unit u-speed">km/h</span></div>
+      <div><div class="small muted">Fahrten</div><span class="num mid" id="s-count">0</span></div>
+    </div>
+  </div>
+  <div class="card"><h2>Strecke pro Tag</h2><svg class="chart" id="s-chart" viewBox="0 0 340 170" role="img" aria-label="Balkendiagramm Strecke pro Tag"></svg></div>
+  <div class="card">
+    <div class="row between"><h2>Fahrten</h2><button class="pill" id="btn-deldemo" hidden>Demo-Fahrten löschen</button></div>
+    <div class="list" id="s-list"></div>
+  </div>
+</section>
+
+<!-- SOS -->
+<section class="view" id="v-sos" hidden>
+  <h1>Notfall</h1>
+  <p class="muted" style="margin:0">Halte den Knopf 2 Sekunden gedrückt.</p>
+  <button class="sosbtn" id="sos" aria-label="Notfall-Knopf, 2 Sekunden halten">
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="var(--sos)" stroke-opacity=".25" stroke-width="5"/><circle id="sos-ring" cx="50" cy="50" r="46" fill="none" stroke="var(--sos)" stroke-width="5" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"/></svg>
+    <span class="core"><span style="font-size:3rem;font-weight:700">SOS</span><span>Notfall</span></span>
+  </button>
+  <div class="card confirm" id="sos-confirm" hidden>
+    <strong>Notfallnachricht vorbereiten?</strong>
+    <span class="small muted">Es öffnet sich eine SMS. Du musst selbst auf Senden tippen.</span>
+    <button class="btn danger" id="sos-go">SMS vorbereiten</button>
+    <button class="btn" id="sos-cancel">Abbrechen</button>
+  </div>
+  <div class="card">
+    <div class="row between"><span>Status</span><strong id="sos-status">Bereit</strong></div>
+    <div class="small muted" id="sos-contact"></div>
+    <pre class="log" id="sos-text" hidden></pre>
+    <button class="btn" id="sos-copy" hidden>Text kopieren</button>
+  </div>
+  <button class="btn" id="btn-alarm">🔊 Lauter Alarm am iPhone</button>
+  <p class="small muted" style="margin:0">Diese Seite beeinflusst nie Bremsen oder Motor des Rollers.</p>
+</section>
+
+<!-- SETTINGS -->
+<section class="view" id="v-set" hidden>
+  <h1>Einstellungen</h1>
+  <div class="card">
+    <h2>Einheiten</h2>
+    <div class="seg" role="group" aria-label="Einheiten"><button id="u-km" aria-pressed="true">km/h</button><button id="u-mi" aria-pressed="false">mph</button></div>
+  </div>
+  <div class="card">
+    <h2>Notfallinfos</h2>
+    <label>Dein Name<input id="f-name" autocomplete="name"></label>
+    <label>Notizen (z. B. Blutgruppe, Allergien)<textarea id="f-notes" rows="2"></textarea></label>
+    <label>Notfallkontakt: Name<input id="f-cname" autocomplete="off"></label>
+    <label>Notfallkontakt: Telefonnummer<input id="f-cphone" type="tel" inputmode="tel" autocomplete="off"></label>
+    <label class="row" style="flex-direction:row;color:var(--fg)"><input type="checkbox" id="f-loc" style="width:auto" checked> Standort an Notfall-SMS anhängen</label>
+    <button class="btn primary" id="btn-save">Speichern</button>
+  </div>
+  <div class="card">
+    <h2>Bluetooth-Protokoll</h2>
+    <div class="small muted">Nach dem Verbinden steht hier, was der Roller anbietet. Kopiere es und schick es an Claude.</div>
+    <pre class="log" id="ble-log">Noch nicht verbunden.</pre>
+    <button class="btn" id="btn-copylog">Protokoll kopieren</button>
+  </div>
+  <div class="card">
+    <h2>Daten</h2>
+    <div class="small muted">Alles wird nur in diesem Browser auf deinem iPhone gespeichert. Wenn du die Browserdaten von Bluefy löschst, sind die Fahrten weg.</div>
+    <button class="btn" id="btn-export">Fahrten als Text kopieren</button>
+    <button class="btn" id="btn-wipe">Alle Fahrten löschen</button>
+    <div class="confirm" id="wipe-confirm" hidden><span class="small">Wirklich alle Fahrten löschen?</span><button class="btn danger" id="wipe-yes">Ja, löschen</button><button class="btn" id="wipe-no">Abbrechen</button></div>
+  </div>
+  <p class="small muted" style="margin:0">ZT3 Cockpit · private Seite, nicht von Segway-Ninebot.</p>
+</section>
+</main>
+
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" data-v="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z"/></svg>Start</button>
+  <button class="tab" role="tab" data-v="ride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 13l4-4M9 3h6"/></svg>Fahrt</button>
+  <button class="tab" role="tab" data-v="stats"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>Statistik</button>
+  <button class="tab sos" role="tab" data-v="sos"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22zm-1 7h2v6h-2zm0 8h2v2h-2z"/></svg>Notfall</button>
+  <button class="tab" role="tab" data-v="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Mehr</button>
+</nav>
+
+<script>
+"use strict";
+/* ---------- storage ---------- */
+const KEY = "zt3-cockpit-v1";
+const store = {
+  load() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch { return null; } },
+  save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} }
+};
+function demoRides() {
+  const now = Date.now(), d = 864e5;
+  return [[1,8.4,28],[2,12.1,41],[4,5.2,19],[6,15.8,52],[9,7.3,25],[13,10,33],[20,21.4,70]]
+    .map(([ago, km, min]) => ({ start: now - ago*d, dur: min*60, km, max: 20, demo: true }));
+}
+const state = store.load() || { useMiles:false, name:"", notes:"", cname:"", cphone:"", loc:true, rides: demoRides() };
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const KM_MI = 1.609344;
+const sp = kmh => state.useMiles ? kmh / KM_MI : kmh;
+const ds = km => state.useMiles ? km / KM_MI : km;
+const fmtDur = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return h ? `${h}:${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}` : `${m}:${String(x).padStart(2,"0")}`; };
+const fmtMin = s => s >= 3600 ? `${Math.floor(s/3600)} h ${Math.round(s%3600/60)} min` : `${Math.round(s/60)} min`;
+function toast(t) { const el = document.createElement("div"); el.className = "toast"; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2200); }
+async function copy(text, okMsg) {
+  try { await navigator.clipboard.writeText(text); toast(okMsg); }
+  catch { toast("Kopieren ging nicht. Bitte Text markieren."); }
+}
+function haversine(a, b) {
+  const R = 6371, rad = x => x*Math.PI/180;
+  const dLat = rad(b.lat-a.lat), dLon = rad(b.lon-a.lon);
+  const h = Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x === t));
+  document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "v-" + t.dataset.v);
+  if (t.dataset.v === "stats") renderStats();
+  window.scrollTo(0, 0);
+}));
+
+/* ---------- units ---------- */
+function renderUnits() {
+  document.querySelectorAll(".u-speed").forEach(e => e.textContent = state.useMiles ? "mph" : "km/h");
+  document.querySelectorAll(".u-dist").forEach(e => e.textContent = state.useMiles ? "mi" : "km");
+  $("u-km").setAttribute("aria-pressed", !state.useMiles); $("u-mi").setAttribute("aria-pressed", state.useMiles);
+}
+$("u-km").onclick = () => { state.useMiles = false; store.save(state); renderAll(); };
+$("u-mi").onclick = () => { state.useMiles = true; store.save(state); renderAll(); };
+
+/* ---------- Bluetooth (read-only, standard services only) ---------- */
+// Only standard Bluetooth SIG services are read. Nothing is ever written to the scooter.
+const SVC = { battery: 0x180F, info: 0x180A, nus: "6e400001-b5a3-f393-e0a9-e50e24dcca9e", gap: 0x1800, gatt: 0x1801, dfu: 0xFE59 };
+const NAMES = { "0000180f":"Battery Service","00002a19":"Battery Level","0000180a":"Device Information","00002a29":"Hersteller","00002a24":"Modell","00002a26":"Firmware","00002a28":"Software","00002a27":"Hardware","00001800":"Generic Access","00001801":"Generic Attribute","0000fe59":"Nordic DFU","6e400001":"Nordic UART","6e400002":"Nordic UART RX (write)","6e400003":"Nordic UART TX (notify)" };
+const nameOf = uuid => NAMES[uuid.slice(0,8)] || "";
+const ble = { device:null, connected:false, battery:null, info:{}, log:[] };
+const hex = dv => Array.from(new Uint8Array(dv.buffer)).map(b => b.toString(16).padStart(2,"0").toUpperCase()).join(" ");
+const txt = dv => { try { return new TextDecoder().decode(dv).replace(/\0+$/,"").trim(); } catch { return ""; } };
+function logLine(s) { ble.log.push(s); $("ble-log").textContent = ble.log.join("\n"); }
+function props(p) { return ["broadcast","read","writeWithoutResponse","write","notify","indicate","authenticatedSignedWrites"].filter(k => p[k]).join(", "); }
+
+async function connect() {
+  if (!navigator.bluetooth) return;
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [SVC.battery, SVC.info, SVC.nus, SVC.gap, SVC.gatt, SVC.dfu]
+    });
+    ble.device = device; ble.log = []; ble.info = {}; ble.battery = null;
+    device.addEventListener("gattserverdisconnected", onDisconnect);
+    logLine(`Gerät: ${device.name || "ohne Namen"}`);
+    logLine(`Zeit: ${new Date().toLocaleString("de-DE")}`);
+    renderHome("Verbinde …");
+    const server = await device.gatt.connect();
+    ble.connected = true;
+    renderHome();
+    const services = await server.getPrimaryServices();
+    for (const s of services) {
+      logLine(`\nSERVICE ${s.uuid} ${nameOf(s.uuid)}`);
+      let chars = [];
+      try { chars = await s.getCharacteristics(); } catch (e) { logLine(`  (Characteristics nicht lesbar: ${e.message})`); }
+      for (const c of chars) {
+        let line = `  CHAR ${c.uuid} ${nameOf(c.uuid)} [${props(c.properties)}]`;
+        const isBattery = c.uuid.startsWith("00002a19");
+        const isInfo = s.uuid.startsWith("0000180a");
+        if ((isBattery || isInfo) && c.properties.read) {
+          try {
+            const v = await c.readValue();
+            line += ` = ${hex(v)}`;
+            if (isBattery && v.byteLength === 1 && v.getUint8(0) <= 100) ble.battery = v.getUint8(0);
+            if (isInfo) { const t = txt(v); if (t) { ble.info[nameOf(c.uuid) || c.uuid] = t; line += ` "${t}"`; } }
+          } catch (e) { line += ` (Lesefehler: ${e.message})`; }
+          if (isBattery && c.properties.notify) {
+            try { await c.startNotifications(); c.addEventListener("characteristicvaluechanged", ev => { const v = ev.target.value; if (v.byteLength === 1) { ble.battery = v.getUint8(0); renderHome(); } }); } catch {}
+          }
+        }
+        logLine(line);
+      }
+    }
+    if (!services.length) logLine("Keine der bekannten Standard-Dienste gefunden.");
+    renderHome();
+  } catch (e) {
+    if (e && e.name === "NotFoundError") return; // user cancelled the picker
+    ble.connected = false;
+    renderHome(`Fehler: ${e.message}`);
+  }
+}
+function onDisconnect() { ble.connected = false; ble.battery = null; logLine("\nVerbindung getrennt."); renderHome(); }
+$("btn-connect").onclick = connect;
+$("btn-disconnect").onclick = () => { try { ble.device && ble.device.gatt.disconnect(); } catch {} };
+$("btn-copylog").onclick = () => copy($("ble-log").textContent, "Protokoll kopiert");
+document.querySelectorAll("[data-locked]").forEach(b => b.onclick = () => toast(`${b.dataset.locked}: nicht verfügbar (verschlüsselt)`));
+
+/* ---------- home ---------- */
+function renderHome(statusOverride) {
+  const live = ble.connected;
+  const demo = !live;
+  $("h-name").textContent = live && ble.device && ble.device.name ? ble.device.name : "ZT3";
+  $("h-status").textContent = statusOverride || (live ? "Verbunden" : "Nicht verbunden");
+  $("h-statusdot").style.color = live ? "var(--ok)" : "var(--muted)";
+  $("h-demo").hidden = !demo;
+  const bars = live ? 3 : 0;
+  document.querySelectorAll("#h-bars i").forEach((b, i) => b.classList.toggle("on", i < bars));
+  const batt = live ? ble.battery : 78;
+  $("h-batt").textContent = batt == null ? "–" : batt;
+  $("ring-fg").style.strokeDashoffset = 270.2 * (1 - (batt || 0) / 100);
+  $("ring-fg").style.stroke = batt == null ? "var(--muted)" : batt < 15 ? "var(--sos)" : batt < 30 ? "var(--warn)" : "var(--ok)";
+  $("h-battnote").textContent = live
+    ? (batt == null ? "Der Roller gibt den Akkustand über den Standard-Dienst nicht heraus (verschlüsselt)." : "Echter Wert vom Roller.")
+    : "Demo-Wert. Verbinde den Roller für den echten Akkustand (falls lesbar).";
+  const hasBT = !!navigator.bluetooth;
+  $("h-bt-pill").textContent = hasBT ? "Bluetooth bereit" : "Kein Bluetooth";
+  $("h-bt-pill").className = "pill " + (hasBT ? "ok" : "warn");
+  $("h-btnote").hidden = hasBT;
+  $("h-btnote").textContent = "Dieser Browser kann kein Bluetooth. Öffne die Seite im Browser „Bluefy“ (App Store), dann geht die Verbindung zum Roller.";
+  $("btn-connect").disabled = !hasBT;
+  $("btn-connect").hidden = live; $("btn-disconnect").hidden = !live;
+  const info = $("h-info"); info.innerHTML = "";
+  const rows = live ? Object.entries(ble.info) : [["Modell", "Segway ZT3 (gespeichert)"], ["Firmware", "1.5.9 (gespeichert)"], ["Bluetooth", "2.1.13 (gespeichert)"]];
+  for (const [k, v] of rows) { const r = document.createElement("div"); r.className = "item"; r.innerHTML = `<span class="muted"></span><span></span>`; r.children[0].textContent = k; r.children[1].textContent = v; info.appendChild(r); }
+  const total = state.rides.reduce((a, r) => a + r.km, 0);
+  $("h-total").textContent = ds(total).toFixed(1);
+}
+
+/* ---------- ride tracking (GPS) ---------- */
+const ride = { on:false, start:0, km:0, max:0, last:null, watch:null, timer:null, speed:0, wake:null };
+async function startRide() {
+  if (!("geolocation" in navigator)) { toast("Dieser Browser hat kein GPS."); return; }
+  Object.assign(ride, { on:true, start:Date.now(), km:0, max:0, last:null, speed:0 });
+  ride.watch = navigator.geolocation.watchPosition(onPos, err => {
+    $("r-note").textContent = err.code === 1 ? "Standort verweigert. Erlaube ihn in den iPhone-Einstellungen für Bluefy, sonst wird nur die Zeit gemessen." : "GPS-Signal schwach …";
+  }, { enableHighAccuracy:true, maximumAge:0, timeout:15000 });
+  ride.timer = setInterval(renderRide, 1000);
+  try { ride.wake = await navigator.wakeLock.request("screen"); } catch {}
+  document.getElementById("scooter").classList.add("moving");
+  renderRide();
+}
+function onPos(p) {
+  const c = p.coords;
+  if (c.accuracy > 30) return;
+  const pt = { lat:c.latitude, lon:c.longitude, t:p.timestamp };
+  if (ride.last) {
+    const d = haversine(ride.last, pt);
+    const dt = (pt.t - ride.last.t) / 1000;
+    if (d < 0.2 || dt > 10) ride.km += d; // ignore GPS jumps
+    const v = c.speed != null && c.speed >= 0 ? c.speed * 3.6 : (dt > 0 ? d / dt * 3600 : 0);
+    ride.speed = v < 1 ? 0 : v;
+  }
+  ride.max = Math.max(ride.max, ride.speed);
+  ride.last = pt;
+  renderRide();
+}
+function stopRide() {
+  navigator.geolocation.clearWatch(ride.watch); clearInterval(ride.timer);
+  try { ride.wake && ride.wake.release(); } catch {}
+  const dur = (Date.now() - ride.start) / 1000;
+  if (dur > 20) {
+    state.rides.push({ start: ride.start, dur, km: ride.km, max: ride.max, demo:false });
+    store.save(state);
+    toast("Fahrt gespeichert");
+  } else toast("Zu kurz, nicht gespeichert");
+  ride.on = false; ride.speed = 0;
+  document.getElementById("scooter").classList.remove("moving");
+  renderRide(); renderHome();
+}
+$("btn-ride").onclick = () => ride.on ? stopRide() : startRide();
+function renderRide() {
+  const dur = ride.on ? (Date.now() - ride.start) / 1000 : 0;
+  $("r-speed").textContent = Math.round(sp(ride.speed));
+  $("h-speed").textContent = Math.round(sp(ride.speed));
+  $("r-time").textContent = fmtDur(dur);
+  $("r-dist").textContent = ds(ride.km).toFixed(2);
+  $("r-avg").textContent = dur > 0 ? Math.round(sp(ride.km / (dur/3600))) : 0;
+  $("r-max").textContent = Math.round(sp(ride.max));
+  $("btn-ride").textContent = ride.on ? "■ Fahrt beenden" : "▶︎ Fahrt starten";
+  $("btn-ride").className = "btn " + (ride.on ? "danger" : "primary");
+}
+
+/* ---------- statistics ---------- */
+let period = 7;
+$("p-week").onclick = () => { period = 7; renderStats(); };
+$("p-month").onclick = () => { period = 30; renderStats(); };
+function renderStats() {
+  $("p-week").setAttribute("aria-pressed", period === 7); $("p-month").setAttribute("aria-pressed", period === 30);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const from = today.getTime() - (period - 1) * 864e5;
+  const rides = state.rides.filter(r => r.start >= from);
+  const km = rides.reduce((a, r) => a + r.km, 0), dur = rides.reduce((a, r) => a + r.dur, 0);
+  $("s-dist").textContent = ds(km).toFixed(1);
+  $("s-time").textContent = fmtMin(dur);
+  $("s-avg").textContent = dur > 0 ? Math.round(sp(km / (dur/3600))) : 0;
+  $("s-count").textContent = rides.length;
+  // chart
+  const days = Array.from({ length: period }, (_, i) => ({ t: from + i*864e5, km: 0 }));
+  rides.forEach(r => { const d = new Date(r.start); d.setHours(0,0,0,0); const b = days.find(x => x.t === d.getTime()); if (b) b.km += r.km; });
+  const maxV = Math.max(1, ...days.map(d => ds(d.km)));
+  const step = maxV > 10 ? 10 : maxV > 4 ? 2 : 1, top = Math.ceil(maxV / step) * step;
+  const W = 340, H = 170, L = 30, B = 22, T = 8, cw = (W - L - 4) / period;
+  let svg = "";
+  for (let v = 0; v <= top; v += step) { const y = H - B - (v/top)*(H - B - T); svg += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end" font-size="10" fill="var(--muted)">${v}</text>`; }
+  days.forEach((d, i) => {
+    const v = ds(d.km), h = (v/top)*(H - B - T), x = L + 2 + i*cw;
+    svg += `<rect x="${x + cw*0.15}" y="${H - B - h}" width="${cw*0.7}" height="${Math.max(h, 0)}" rx="3" fill="var(--accent)"/>`;
+    if (period === 7 || i % 5 === 0 || i === period - 1) svg += `<text x="${x + cw/2}" y="${H - 6}" text-anchor="middle" font-size="10" fill="var(--muted)">${new Date(d.t).toLocaleDateString("de-DE", period === 7 ? { weekday:"short" } : { day:"numeric", month:"numeric" })}</text>`;
+  });
+  $("s-chart").innerHTML = svg;
+  // list
+  const list = $("s-list"); list.innerHTML = "";
+  const sorted = [...state.rides].sort((a, b) => b.start - a.start);
+  if (!sorted.length) list.innerHTML = `<div class="muted small">Noch keine Fahrten. Starte eine im Tab „Fahrt“.</div>`;
+  for (const r of sorted) {
+    const el = document.createElement("div"); el.className = "item";
+    el.innerHTML = `<div><div></div><div class="small muted"></div></div><strong class="num"></strong>`;
+    el.children[0].children[0].textContent = new Date(r.start).toLocaleString("de-DE", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) + (r.demo ? "  · Demo" : "");
+    el.children[0].children[1].textContent = `${fmtMin(r.dur)} · max ${Math.round(sp(r.max))} ${state.useMiles ? "mph" : "km/h"}`;
+    el.children[1].textContent = `${ds(r.km).toFixed(1)} ${state.useMiles ? "mi" : "km"}`;
+    list.appendChild(el);
+  }
+  $("btn-deldemo").hidden = !state.rides.some(r => r.demo);
+}
+$("btn-deldemo").onclick = () => { state.rides = state.rides.filter(r => !r.demo); store.save(state); renderAll(); };
+
+/* ---------- emergency ---------- */
+let holdT = null, holdStart = 0, holdRaf = null;
+const sos = $("sos"), sosRing = $("sos-ring");
+function holdFrame() {
+  const p = Math.min(1, (Date.now() - holdStart) / 2000);
+  sosRing.style.strokeDashoffset = 289 * (1 - p);
+  if (p >= 1) { endHold(true); return; }
+  holdRaf = requestAnimationFrame(holdFrame);
+}
+function beginHold(e) { e.preventDefault(); holdStart = Date.now(); sos.classList.add("holding"); holdRaf = requestAnimationFrame(holdFrame); if (navigator.vibrate) navigator.vibrate(30); }
+function endHold(done) {
+  cancelAnimationFrame(holdRaf); sos.classList.remove("holding");
+  if (done === true) { $("sos-confirm").hidden = false; if (navigator.vibrate) navigator.vibrate([80,40,80]); prefetchLocation(); }
+  else sosRing.style.strokeDashoffset = 289;
+}
+sos.addEventListener("pointerdown", beginHold);
+["pointerup","pointerleave","pointercancel"].forEach(ev => sos.addEventListener(ev, () => { if (sos.classList.contains("holding")) endHold(false); }));
+sos.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("sos-confirm").hidden = false; prefetchLocation(); } });
+let sosPos = null;
+function prefetchLocation() {
+  if (!state.loc || !navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(p => { sosPos = p.coords; }, () => {}, { enableHighAccuracy:true, timeout:10000 });
+}
+function sosMessage() {
+  const parts = [state.name.trim() ? `NOTFALL von ${state.name.trim()}: Ich hatte einen Unfall mit meinem E-Scooter und brauche Hilfe.` : "NOTFALL: Ich hatte einen Unfall mit meinem E-Scooter und brauche Hilfe."];
+  if (state.notes.trim()) parts.push(`Hinweise: ${state.notes.trim()}`);
+  if (state.loc && sosPos) parts.push(`Mein Standort: https://maps.apple.com/?ll=${sosPos.latitude.toFixed(6)},${sosPos.longitude.toFixed(6)}&q=SOS`);
+  return parts.join("\n");
+}
+$("sos-go").onclick = () => {
+  const msg = sosMessage();
+  const num = state.cphone.replace(/[^\d+]/g, "");
+  $("sos-text").textContent = msg; $("sos-text").hidden = false; $("sos-copy").hidden = false;
+  $("sos-status").textContent = "Nachricht vorbereitet";
+  $("sos-confirm").hidden = true; sosRing.style.strokeDashoffset = 289;
+  location.href = `sms:${num}&body=${encodeURIComponent(msg)}`;
+};
+$("sos-cancel").onclick = () => { $("sos-confirm").hidden = true; sosRing.style.strokeDashoffset = 289; $("sos-status").textContent = "Abgebrochen"; };
+$("sos-copy").onclick = () => copy($("sos-text").textContent, "Text kopiert");
+
+let audio = null;
+$("btn-alarm").onclick = () => {
+  if (audio) { audio.ctx.close(); audio = null; $("btn-alarm").textContent = "🔊 Lauter Alarm am iPhone"; return; }
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator(), lfo = ctx.createOscillator(), lfoGain = ctx.createGain(), gain = ctx.createGain();
+  osc.type = "square"; osc.frequency.value = 1000;
+  lfo.frequency.value = 1.2; lfoGain.gain.value = 450;
+  lfo.connect(lfoGain).connect(osc.frequency);
+  gain.gain.value = 0.6; osc.connect(gain).connect(ctx.destination);
+  osc.start(); lfo.start();
+  audio = { ctx };
+  $("btn-alarm").textContent = "🔇 Alarm stoppen";
+};
+
+/* ---------- settings ---------- */
+function fillForm() { $("f-name").value = state.name; $("f-notes").value = state.notes; $("f-cname").value = state.cname; $("f-cphone").value = state.cphone; $("f-loc").checked = state.loc; }
+$("btn-save").onclick = () => {
+  Object.assign(state, { name:$("f-name").value, notes:$("f-notes").value, cname:$("f-cname").value, cphone:$("f-cphone").value, loc:$("f-loc").checked });
+  store.save(state); renderSos(); toast("Gespeichert");
+};
+function renderSos() {
+  $("sos-contact").textContent = state.cphone ? `Kontakt: ${state.cname || "Notfallkontakt"} (${state.cphone})` : "Noch kein Notfallkontakt. Trag einen unter „Mehr“ ein.";
+}
+$("btn-export").onclick = () => copy(state.rides.map(r => `${new Date(r.start).toLocaleString("de-DE")};${fmtMin(r.dur)};${r.km.toFixed(2)} km;max ${Math.round(r.max)} km/h${r.demo ? ";Demo" : ""}`).join("\n") || "Keine Fahrten", "Fahrten kopiert");
+$("btn-wipe").onclick = () => { $("wipe-confirm").hidden = false; };
+$("wipe-no").onclick = () => { $("wipe-confirm").hidden = true; };
+$("wipe-yes").onclick = () => { state.rides = []; store.save(state); $("wipe-confirm").hidden = true; renderAll(); toast("Fahrten gelöscht"); };
+
+/* ---------- boot ---------- */
+function renderAll() { renderUnits(); renderHome(); renderRide(); renderStats(); renderSos(); }
+fillForm(); renderAll(); store.save(state);
+</script>
+</body>
+</html>
